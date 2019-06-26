@@ -10,6 +10,7 @@ function showhelp(){
 		    -c    Colorize output
 		    -t    Test against all packages, including fixed ones
 		    -l    Link to the full AVG URL
+		    -n    Do not count vulnerable/listed packages at the end
 		
 		Fields:
 		    name        Link to the Arch Vulnerability Group number
@@ -30,13 +31,14 @@ declare -A vfields=(
 	[affected]=1 [fixed]=1 [ticket]=1 [issues]=1
 )
 
+vcount=true
 vsys=true
 coloroutput=false
 fullurl=false
 securl='https://security.archlinux.org/issues/vulnerable/json'
 vformat=packages,affected,fixed,status,severity,name
 
-while getopts 'haf:vctl' opt; do
+while getopts 'haf:vctln' opt; do
 	case "${opt}" in
 		h) showhelp ;;
 		a) vformat=name,packages,status,severity,type,affected,fixed,ticket,issues ;;
@@ -45,6 +47,7 @@ while getopts 'haf:vctl' opt; do
 		c) coloroutput=true ;;
 		t) securl='https://security.archlinux.org/issues/all/json' ;;
 		l) fullurl=true ;;
+		n) vcount=false ;;
 		*) showhelp ;;
 	esac
 done
@@ -95,4 +98,10 @@ if $coloroutput; then
 		s/Low/\x1b[92m\x1b[1mLow\x1b[0m/g'
 else
 	printf '%s\n%s' "${vheaders}" "${vrows}" | column -s',' -t
+fi
+
+if $vcount; then
+	vc="$(echo "${vrows}" | wc -l)"
+	printf '\n%s vulnerable packages ' "${vc}"
+	$vsys && echo 'installed' || echo 'listed'
 fi
