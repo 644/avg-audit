@@ -13,6 +13,7 @@ Usage:
     -c    Colorize output
     -t    Test against all packages, including fixed ones
     -l    Link to the full AVG URL
+    -n    Do not count vulnerable/listed packages at the end
 
 Fields:
     name        Link to the Arch Vulnerability Group number
