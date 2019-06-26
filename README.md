@@ -5,6 +5,6 @@ Usage:
     -h    Show this help message
     -a    Show all fields
           This is equal to -f name,packages,status,severity,type,affected,fixed,ticket,issues
-    -f    Custom format, e.g. -f packages,affected,severity
+    -f    Custom format, e.g. -f packages,affected,severity,name
     -v    Show all vulnerable packages, not just ones on the system
     -c    Colorize output```
