@@ -1,3 +1,6 @@
+# Description
+archaudit will check currently installed packages on Arch Linux based systems against https://security.archlinux.org/issues/. This is very similar to pacaudit and archsecure, however it allows for custom formatting of the fields and has all the same features (except the nagios plugin in pacaudit, which I plan to add). It has a couple of other minor improvements as well, such as testing against all known security vulnerabilities including fixed ones, which could be useful in case of outdated software. I also have other features in mind like running as a service, or alongside an update utility.
+
 # Installation
 `$ wget https://raw.githubusercontent.com/i34/archaudit/master/archaudit && chmod +x archaudit`
 ```
@@ -22,8 +25,6 @@ Fields:
     ticket      Ticket number for bugs.archlinux.org
     issues      List of related CVEs
 ```
-
-This is very similar to pacaudit and archsecure, however this allows for custom formatting of the fields and has all the same features (except the nagios plugin in pacaudit, which I plan to add). It has a couple of other minor improvements. I also have other features in mind like running as a service, or alongside an update utility.
 
 # Example
 ![example.png](example.png)
