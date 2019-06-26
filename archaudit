@@ -8,12 +8,14 @@ function showhelp(){
 		    -f    Custom format, e.g. -f packages,affected,severity
 		    -v    Show all vulnerable packages, not just ones on the system
 		    -c    Colorize output
+		    -t    Test against all packages, including fixed ones
+		    -l    Link to the full AVG URL
 		
 		Fields:
 		    name        Link to the Arch Vulnerability Group number
 		    packages    List of the affected packages
 		    status      Shows whether it is fixed or not
-		    severity    From High, Medium, to Low
+		    severity    From Critical, High, Medium, to Low
 		    type        Short description on the type of attack
 		    affected    Version number of the affected package
 		    fixed       Version number of the fixed package
@@ -30,19 +32,24 @@ declare -A vfields=(
 
 vsys=true
 coloroutput=false
+fullurl=false
+securl='https://security.archlinux.org/issues/vulnerable/json'
+vformat=packages,affected,fixed,status,severity,name
 
-while getopts 'haf:vc' opt; do
+while getopts 'haf:vctl' opt; do
 	case "${opt}" in
 		h) showhelp ;;
 		a) vformat=name,packages,status,severity,type,affected,fixed,ticket,issues ;;
 		f) vformat="${OPTARG}" ;;
 		v) vsys=false ;;
 		c) coloroutput=true ;;
+		t) securl='https://security.archlinux.org/issues/all/json' ;;
+		l) fullurl=true ;;
 		*) showhelp ;;
 	esac
 done
 
-jdata="$(curl -s 'https://security.archlinux.org/vulnerable/json')"
+jdata="$(curl -s "${securl}")"
 IFS=','
 for f in ${vformat}; do
 	if [[ -n "${vfields[$f]}" ]]; then
@@ -57,7 +64,9 @@ for f in ${vformat}; do
 				jqcommand+=".${f}[]"
 				;;
 			name)
-				jqcommand+='"https://security.archlinux.org/" + .'"${f}"
+				$fullurl && jqcommand+='"https://security.archlinux.org/" + '
+				jqcommand+=".${f}"
+				;;
 		esac
 	fi
 done
@@ -79,7 +88,8 @@ fi
 
 if $coloroutput; then
 	printf '%s\n%s' "${vheaders}" "${vrows}" | column -s',' -t | \
-		sed 's/High/\x1b[91m\x1b[1mHigh\x1b[0m/g;
+		sed 's/Critical/\x1b[91m\x1b[1mCritical\x1b[0m/g;
+		s/High/\x1b[91m\x1b[1mHigh\x1b[0m/g;
 		s/Vulnerable/\x1b[91m\x1b[1mVulnerable\x1b[0m/g;
 		s/Medium/\x1b[93m\x1b[1mMedium\x1b[0m/g;
 		s/Low/\x1b[92m\x1b[1mLow\x1b[0m/g'
