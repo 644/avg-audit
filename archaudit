@@ -1,0 +1,77 @@
+#!/bin/bash
+function showhelp(){
+	cat <<-EOF
+		Usage:
+		    -h    Show this help message
+		    -a    Show all fields
+		          This is equal to -f name,packages,status,severity,type,affected,fixed,ticket,issues
+		    -f    Custom format, e.g. -f packages,affected,severity
+		    -v    Show all vulnerable packages, not just ones on the system
+		    -c    Colorize output
+	EOF
+	exit
+}
+
+declare -A vfields=(
+	[name]=1 [packages]=1 [status]=1 [severity]=1 [type]=1
+	[affected]=1 [fixed]=1 [ticket]=1 [issues]=1
+)
+
+vsys=true
+coloroutput=false
+
+while getopts 'haf:vc' opt; do
+	case "${opt}" in
+		h) showhelp ;;
+		a) vformat=name,packages,status,severity,type,affected,fixed,ticket,issues ;;
+		f) vformat="${OPTARG}" ;;
+		v) vsys=false ;;
+		c) coloroutput=true ;;
+		*) showhelp ;;
+	esac
+done
+
+jdata="$(curl -s 'https://security.archlinux.org/vulnerable/json')"
+IFS=','
+for f in ${vformat}; do
+	if [[ -n "${vfields[$f]}" ]]; then
+		[[ -n "${vheaders}" ]] && vheaders+=','
+		vheaders+="${f^^}"
+		[[ -n "${jqcommand}" ]] && jqcommand+=' + "," + '
+		case "${f}" in
+			status|severity|type|affected|fixed|ticket)
+				jqcommand+=".${f}"
+				;;
+			packages|issues)
+				jqcommand+=".${f}[]"
+				;;
+			name)
+				jqcommand+='"https://security.archlinux.org/" + .'"${f}"
+		esac
+	fi
+done
+jqcommand+=' + "\n"'
+
+if $vsys; then
+	packagelist="$(pacman -Qs)"
+	while read -r vpackage; do
+		if echo "${packagelist}" | grep -q "${vpackage}"; then
+			vaffected="$(echo "${vpackage}" | cut -d' ' -f2)"
+			vpackagename="$(echo "${vpackage}" | cut -d' ' -f1)"
+			vjqdata+="$(echo "${jdata}" | jq -r '.[] | select((.affected == "'"${vaffected}"'") and .packages[0] == "'"${vpackagename}"'")')"
+		fi
+	done < <(echo "${jdata}" | jq -jr '.[] | .packages[] + " " + .affected + "\n"')
+	vrows+="$(echo "${vjqdata}" | jq -jr "${jqcommand}")"
+else
+	vrows+="$(echo "${jdata}" | jq -jr ".[] | ${jqcommand}")"
+fi
+
+if $coloroutput; then
+	printf '%s\n%s' "${vheaders}" "${vrows}" | column -s',' -t | \
+		sed 's/High/\x1b[91m\x1b[1mHigh\x1b[0m/g;
+		s/Vulnerable/\x1b[91m\x1b[1mVulnerable\x1b[0m/g;
+		s/Medium/\x1b[93m\x1b[1mMedium\x1b[0m/g;
+		s/Low/\x1b[92m\x1b[1mLow\x1b[0m/g'
+else
+	printf '%s\n%s' "${vheaders}" "${vrows}" | column -s',' -t
+fi
