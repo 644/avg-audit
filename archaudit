@@ -8,6 +8,17 @@ function showhelp(){
 		    -f    Custom format, e.g. -f packages,affected,severity
 		    -v    Show all vulnerable packages, not just ones on the system
 		    -c    Colorize output
+		
+		Fields:
+		    name        Link to the Arch Vulnerability Group number
+		    packages    List of the affected packages
+		    status      Shows whether it is fixed or not
+		    severity    From High, Medium, to Low
+		    type        Short description on the type of attack
+		    affected    Version number of the affected package
+		    fixed       Version number of the fixed package
+		    ticket      Ticket number for bugs.archlinux.org
+		    issues      List of related CVEs
 	EOF
 	exit
 }
