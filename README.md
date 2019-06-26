@@ -11,3 +11,6 @@ Usage:
 ```
 
 This is very similar to pacaudit and archsecure, however this allows for custom formatting of the fields and has all the same features (except the nagios plugin in pacaudit, which I plan to add). I also have other features in mind like running as a service, or alongside an update utility.
+
+# Example
+![example.png](example.png)
