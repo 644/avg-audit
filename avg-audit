@@ -11,6 +11,7 @@ function showhelp(){
 		    -t    Test against all packages, including fixed ones
 		    -l    Link to the full AVG URL
 		    -n    Do not count vulnerable/listed packages at the end
+		    -b    Alternative database location
 		
 		Fields:
 		    name        Link to the Arch Vulnerability Group number
@@ -36,9 +37,10 @@ vsys=true
 coloroutput=false
 fullurl=false
 securl='https://security.archlinux.org/issues/vulnerable/json'
+dbpath='/var/lib/pacman'
 vformat=packages,affected,fixed,status,severity,name
 
-while getopts 'haf:vctln' opt; do
+while getopts 'haf:vctlnb:' opt; do
 	case "${opt}" in
 		h) showhelp ;;
 		a) vformat=name,packages,status,severity,type,affected,fixed,ticket,issues ;;
@@ -48,6 +50,14 @@ while getopts 'haf:vctln' opt; do
 		t) securl='https://security.archlinux.org/issues/all/json' ;;
 		l) fullurl=true ;;
 		n) vcount=false ;;
+		b)
+			if [[ -d "${OPTARG}" ]]; then
+				dbpath="${OPTARG}"
+			else
+				echo "${OPTARG} not a directory"
+				exit
+			fi
+			;;
 		*) showhelp ;;
 	esac
 done
@@ -76,7 +86,7 @@ done
 jqcommand+=' + "\n"'
 
 if $vsys; then
-	packagelist="$(pacman -Qs)"
+	packagelist="$(pacman -Qsb "${dbpath}")"
 	while read -r vpackage; do
 		if echo "${packagelist}" | grep -q "${vpackage}"; then
 			vaffected="$(echo "${vpackage}" | cut -d' ' -f2)"
