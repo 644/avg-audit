@@ -1,5 +1,5 @@
 # Arch Vulnerability Group auditor
-avg-audit will check currently installed packages on Arch Linux based systems against https://security.archlinux.org/issues/. This is very similar to pacaudit and archsecure, however it allows for custom formatting of the fields and has all the same features (except the nagios plugin in pacaudit, which I plan to add). It has a couple of other minor improvements as well, such as testing against all known security vulnerabilities including fixed ones, which could be useful in case of outdated software. I also have other features in mind like running as a service, or alongside an update utility.
+avg-audit will check currently installed packages on Arch Linux based systems against https://security.archlinux.org/issues/. This is very similar to pacaudit and archsecure and arch-audit, however it allows for custom formatting of the fields and has all the same features (except the nagios plugin in pacaudit, which I plan to add). It has a couple of other minor improvements as well, such as testing against all known security vulnerabilities including fixed ones, which could be useful in case of outdated software. I also have other features in mind like running as a service, or alongside an update utility.
 
 # Installation
 `$ wget https://raw.githubusercontent.com/i34/avg-audit/master/avg-audit && chmod +x avg-audit`
