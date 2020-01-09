@@ -42,7 +42,7 @@ vformat=packages,affected,fixed,status,severity,name
 
 while getopts 'haf:vctlnb:' opt; do
 	case "${opt}" in
-		h) showhelp ;;
+		h) showhelp; ;;
 		a) vformat=name,packages,status,severity,type,affected,fixed,ticket,issues ;;
 		f) vformat="${OPTARG}" ;;
 		v) vsys=false ;;
@@ -70,16 +70,9 @@ for f in ${vformat}; do
 		vheaders+="${f^^}"
 		[[ -n "${jqcommand}" ]] && jqcommand+=' + "," + '
 		case "${f}" in
-			status|severity|type|affected|fixed|ticket)
-				jqcommand+=".${f}"
-				;;
-			packages|issues)
-				jqcommand+=".${f}[]"
-				;;
-			name)
-				$fullurl && jqcommand+='"https://security.archlinux.org/" + '
-				jqcommand+=".${f}"
-				;;
+			status|severity|type|affected|fixed|ticket) jqcommand+=".${f}" ;;
+			packages|issues) jqcommand+=".${f}[]" ;;
+			name) $fullurl && jqcommand+='"https://security.archlinux.org/" + '; jqcommand+=".${f}" ;;
 		esac
 	fi
 done
@@ -91,13 +84,15 @@ if $vsys; then
 		if echo "${packagelist}" | grep -q "${vpackage}"; then
 			vaffected="$(echo "${vpackage}" | cut -d' ' -f2)"
 			vpackagename="$(echo "${vpackage}" | cut -d' ' -f1)"
-			vjqdata+="$(echo "${jdata}" | jq -r '.[] | select((.affected == "'"${vaffected}"'") and .packages[0] == "'"${vpackagename}"'")')"
+			vjqdata+="$(echo "${jdata}" | jq -r '.[] | select((.affected == "'"${vaffected}"'") and .packages[0] == "'"${vpackagename}"'")' 2>/dev/null)"
 		fi
-	done < <(echo "${jdata}" | jq -jr '.[] | .packages[] + " " + .affected + "\n"')
-	vrows+="$(echo "${vjqdata}" | jq -jr "${jqcommand}")"
+	done < <(echo "${jdata}" | jq -jr '.[] | .packages[] + " " + .affected + "\n"' 2>/dev/null)
+	vrows+="$(echo "${vjqdata}" | jq -jr "${jqcommand}" 2>/dev/null)"
 else
-	vrows+="$(echo "${jdata}" | jq -jr ".[] | ${jqcommand}")"
+	vrows+="$(echo "${jdata}" | jq -jr ".[] | ${jqcommand}" 2>/dev/null)"
 fi
+
+[[ -z "${vrows}" ]] && echo 'No vulnerable packages installed.' && exit
 
 if $coloroutput; then
 	printf '%s\n%s' "${vheaders}" "${vrows}" | column -s',' -t | \
@@ -107,7 +102,7 @@ if $coloroutput; then
 		s/Medium/\x1b[93m\x1b[1mMedium\x1b[0m/g;
 		s/Low/\x1b[92m\x1b[1mLow\x1b[0m/g'
 else
-	printf '%s\n%s' "${vheaders}" "${vrows}" | column -s',' -t
+	printf '%s\n%s' "${vheaders}" "${vrows}" | column -s',' -t 
 fi
 
 if $vcount; then
