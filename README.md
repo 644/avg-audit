@@ -28,6 +28,9 @@ Fields:
     issues      List of related CVEs
 ```
 
+# Dependencies
+jq, curl, pacman
+
 # Example
 ![example.png](example.png)
 
