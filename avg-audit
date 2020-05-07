@@ -62,7 +62,7 @@ while getopts 'haf:vctlnb:' opt; do
 		f) vformat=${OPTARG} ;;
 		v) vsys=false ;;
 		c) coloroutput=true ;;
-		t) securl='https://security.archlinux.org/issues/all/json' ;;
+		t) securl='https://security.archlinux.org/all.json' ;;
 		l) fullurl=true ;;
 		n) vcount=false ;;
 		b) dbpath=${OPTARG}; [[ -d "${dbpath}" ]] || { printf '%s not a directory\n' "${dbpath}" >&2; exit 1; } ;;
@@ -70,7 +70,7 @@ while getopts 'haf:vctlnb:' opt; do
 	esac
 done
 
-jdata=$(curl -s "${securl}") || { printf 'Unable to retrieve data.\n' >&2; exit 1; }
+jdata=$(curl -L -s "${securl}") || { printf 'Unable to retrieve data.\n' >&2; exit 1; }
 
 vfields=(
 	[issues]='.issues[]' [packages]='.packages[]' [name]='.name'
