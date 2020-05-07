@@ -1,5 +1,31 @@
-#!/bin/bash
-function showhelp(){
+#!/usr/bin/env bash
+case ${BASH_VERSION} in ''|[123].*) printf 'Bash 4.0+ required' >&2; exit 1; ;; esac
+
+declare -- coloroutput=false
+declare -- fullurl=false
+declare -- vsys=false
+declare -- vformat=packages,affected,fixed,status,severity,name
+declare -- dbpath='/var/lib/pacman'
+declare -- securl='https://security.archlinux.org/issues/vulnerable/json'
+declare -r -- red='\x1b[91m\x1b[1m'
+declare -r -- yel='\x1b[93m\x1b[1m'
+declare -r -- grn='\x1b[92m\x1b[1m'
+declare -r -- esc='\x1b[0m'
+declare -ar -- depends=('pacman' 'jq' 'sed' 'column' 'cat' 'curl')
+declare -i -- vcount
+declare -a -- vrows
+declare -A -- vfields
+declare -A -- packagelist
+declare -- jdata
+declare -- jqcommand
+declare -- opt
+declare -- package
+declare -- vaffected
+declare -- vf
+declare -- vheaders
+declare -- vpackage
+
+showhelp() {
 	cat <<-EOF
 		Usage:
 		    -h    Show this help message
@@ -27,86 +53,63 @@ function showhelp(){
 	exit
 }
 
-declare -A vfields=(
-	[name]=1 [packages]=1 [status]=1 [severity]=1 [type]=1
-	[affected]=1 [fixed]=1 [ticket]=1 [issues]=1
-)
-
-vcount=true
-vsys=true
-coloroutput=false
-fullurl=false
-securl='https://security.archlinux.org/issues/vulnerable/json'
-dbpath='/var/lib/pacman'
-vformat=packages,affected,fixed,status,severity,name
+hash -- "${depends[@]}" || exit 1
 
 while getopts 'haf:vctlnb:' opt; do
-	case "${opt}" in
+	case ${opt} in
 		h) showhelp; ;;
 		a) vformat=name,packages,status,severity,type,affected,fixed,ticket,issues ;;
-		f) vformat="${OPTARG}" ;;
+		f) vformat=${OPTARG} ;;
 		v) vsys=false ;;
 		c) coloroutput=true ;;
 		t) securl='https://security.archlinux.org/issues/all/json' ;;
 		l) fullurl=true ;;
 		n) vcount=false ;;
-		b)
-			if [[ -d "${OPTARG}" ]]; then
-				dbpath="${OPTARG}"
-			else
-				echo "${OPTARG} not a directory"
-				exit
-			fi
-			;;
+		b) dbpath=${OPTARG}; [[ -d "${dbpath}" ]] || { printf '%s not a directory\n' "${dbpath}" >&2; exit 1; } ;;
 		*) showhelp ;;
 	esac
 done
 
-jdata="$(curl -s "${securl}")"
-IFS=','
-for f in ${vformat}; do
-	if [[ -n "${vfields[$f]}" ]]; then
-		[[ -n "${vheaders}" ]] && vheaders+=','
-		vheaders+="${f^^}"
-		[[ -n "${jqcommand}" ]] && jqcommand+=' + "," + '
-		case "${f}" in
-			status|severity|type|affected|fixed|ticket) jqcommand+=".${f}" ;;
-			packages|issues) jqcommand+=".${f}[]" ;;
-			name) $fullurl && jqcommand+='"https://security.archlinux.org/" + '; jqcommand+=".${f}" ;;
-		esac
-	fi
-done
-jqcommand+=' + "\n"'
+jdata=$(curl -s "${securl}") || { printf 'Unable to retrieve data.\n' >&2; exit 1; }
 
-if $vsys; then
-	packagelist="$(pacman -Qsb "${dbpath}")"
-	while read -r vpackage; do
-		if echo "${packagelist}" | grep -q "${vpackage}"; then
-			vaffected="$(echo "${vpackage}" | cut -d' ' -f2)"
-			vpackagename="$(echo "${vpackage}" | cut -d' ' -f1)"
-			vjqdata+="$(echo "${jdata}" | jq -r '.[] | select((.affected == "'"${vaffected}"'") and .packages[0] == "'"${vpackagename}"'")' 2>/dev/null)"
-		fi
-	done < <(echo "${jdata}" | jq -jr '.[] | .packages[] + " " + .affected + "\n"' 2>/dev/null)
-	vrows+="$(echo "${vjqdata}" | jq -jr "${jqcommand}" 2>/dev/null)"
+vfields=(
+	[issues]='.issues[]' [packages]='.packages[]' [name]='.name'
+	[status]='.status' [severity]='.severity' [type]='.type'
+	[affected]='.affected' [fixed]='.fixed' [ticket]='.ticket'
+)
+${fullurl} && vfields[name]='"https://security.archlinux.org/" + .name'
+
+while read -r -d, vf; do
+	[[ -z ${vfields[${vf}]} ]] && { printf '%q not a valid field\n' "${vf}" >&2; exit 1; }
+	jqcommand+=" + \",\" + ${vfields[${vf}]}"
+done <<< "${vformat},"
+
+jqcommand=${jqcommand:9}
+vheaders=${vformat^^}
+
+while read -r package; do
+	packagelist[${package%% *}]=${package##* }
+done < <(pacman -Q)
+
+while read -r vpackage vaffected; do
+	[[ ${packagelist[${vpackage}]} == "${vaffected}" ]] &&
+		vrows+=("$(jq -r ".[] | select((.affected == \"${vaffected}\") and .packages[0] == \"${vpackage}\") | ${jqcommand}" <<< "${jdata}")")
+done < <(jq -r '.[] | .packages[] + " " + .affected' <<< "${jdata}")
+
+((${#vrows[@]})) || { printf 'No vulnerable packages installed.\n'; exit; }
+
+if ${coloroutput}; then
+	printf '%s\n%s\n' "${vheaders}" "${vrows[@]}" | column -s, -t | \
+		sed "s/Critical/${red}Critical${esc}/g;
+			s/High/${red}High${esc}/g;
+			s/Vulnerable/${red}Vulnerable${esc}/g;
+			s/Medium/${yel}Medium${esc}/g;
+			s/Low/${grn}Low${esc}/g"
 else
-	vrows+="$(echo "${jdata}" | jq -jr ".[] | ${jqcommand}" 2>/dev/null)"
+	printf '%s\n%s\n' "${vheaders}" "${vrows[@]}" | column -s, -t
 fi
 
-[[ -z "${vrows}" ]] && echo 'No vulnerable packages installed.' && exit
-
-if $coloroutput; then
-	printf '%s\n%s' "${vheaders}" "${vrows}" | column -s',' -t | \
-		sed 's/Critical/\x1b[91m\x1b[1mCritical\x1b[0m/g;
-		s/High/\x1b[91m\x1b[1mHigh\x1b[0m/g;
-		s/Vulnerable/\x1b[91m\x1b[1mVulnerable\x1b[0m/g;
-		s/Medium/\x1b[93m\x1b[1mMedium\x1b[0m/g;
-		s/Low/\x1b[92m\x1b[1mLow\x1b[0m/g'
-else
-	printf '%s\n%s' "${vheaders}" "${vrows}" | column -s',' -t 
-fi
-
-if $vcount; then
-	vc="$(echo "${vrows}" | wc -l)"
-	printf '\n%s vulnerable packages ' "${vc}"
-	$vsys && echo 'installed' || echo 'listed'
+if ${vcount}; then
+	printf '\n%s vulnerable packages ' "${#vrows[@]}"
+	${vsys} && printf 'installed\n' || printf 'listed\n'
 fi
