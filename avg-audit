@@ -3,7 +3,7 @@ case ${BASH_VERSION} in ''|[123].*) printf 'Bash 4.0+ required' >&2; exit 1; ;; 
 
 declare -- coloroutput=false
 declare -- fullurl=false
-declare -- vsys=false
+declare -- vsys=true
 declare -- vformat=packages,affected,fixed,status,severity,name
 declare -- dbpath='/var/lib/pacman'
 declare -- securl='https://security.archlinux.org/issues/vulnerable/json'
@@ -91,10 +91,14 @@ while read -r package; do
 	packagelist[${package%% *}]=${package##* }
 done < <(pacman -Q)
 
-while read -r vpackage vaffected; do
-	[[ ${packagelist[${vpackage}]} == "${vaffected}" ]] &&
-		vrows+=("$(jq -r ".[] | select((.affected == \"${vaffected}\") and .packages[0] == \"${vpackage}\") | ${jqcommand}" <<< "${jdata}")")
-done < <(jq -r '.[] | .packages[] + " " + .affected' <<< "${jdata}")
+if ${vsys}; then
+	while read -r vpackage vaffected; do
+		[[ ${packagelist[${vpackage}]} == "${vaffected}" ]] &&
+			vrows+=("$(jq -r ".[] | select((.affected == \"${vaffected}\") and .packages[0] == \"${vpackage}\") | ${jqcommand}" <<< "${jdata}")")
+	done < <(jq -r '.[] | .packages[] + " " + .affected' <<< "${jdata}")
+else
+	mapfile -t vrows < <(jq -r ".[] | ${jqcommand}" <<< "${jdata}")
+fi
 
 ((${#vrows[@]})) || { printf 'No vulnerable packages installed.\n'; exit; }
 
