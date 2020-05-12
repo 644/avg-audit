@@ -94,13 +94,13 @@ done < <(pacman -Q)
 if ${vsys}; then
 	while read -r vpackage vaffected; do
 		[[ ${packagelist[${vpackage}]} == "${vaffected}" ]] &&
-			vrows+=("$(jq -r ".[] | select((.affected == \"${vaffected}\") and .packages[0] == \"${vpackage}\") | ${jqcommand}" <<< "${jdata}")")
+			vrows+=("$(jq -r ".[] | select((.affected == \"${vaffected}\") and any(.packages[]; . == \"${vpackage}\")) | ${jqcommand}" <<< "${jdata}")")
 	done < <(jq -r '.[] | .packages[] + " " + .affected' <<< "${jdata}")
 else
 	mapfile -t vrows < <(jq -r ".[] | ${jqcommand}" <<< "${jdata}")
 fi
 
-((${#vrows[@]})) || { printf 'No vulnerable packages installed.\n'; exit; }
+((${#vrows[@]} > 0)) || { printf 'No vulnerable packages installed.\n'; exit; }
 
 if ${coloroutput}; then
 	printf '%s\n%s\n' "${vheaders}" "${vrows[@]}" | column -s, -t | \
