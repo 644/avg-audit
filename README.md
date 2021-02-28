@@ -4,9 +4,20 @@ avg-audit will check currently installed packages on Arch Linux based systems ag
 The C version is a work in progress.
 
 # Installation
+For the bash script
+
 `$ wget https://raw.githubusercontent.com/i34/avg-audit/master/avg-audit && chmod +x avg-audit`
+
+For the C program
 ```
-Usage:
+$ pacman -S yajl
+$ wget https://raw.githubusercontent.com/644/avg-audit/master/avg-audit.c
+$ gcc -oavg-audit avg-audit.c -O3 -Wall -lyajl
+```
+
+# Usage
+For the bash script
+```
     -h    Show this help message
     -a    Show all fields
           This is equal to -f name,packages,status,severity,type,affected,fixed,ticket,issues
@@ -28,6 +39,11 @@ Fields:
     fixed       Version number of the fixed package
     ticket      Ticket number for bugs.archlinux.org
     issues      List of related CVEs
+```
+
+For the C program
+```
+$ curl -L -s 'https://security.archlinux.org/issues/vulnerable/json' | /path/to/avg-audit | column -s, -t
 ```
 
 # Dependencies
