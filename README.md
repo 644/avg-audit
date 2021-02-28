@@ -12,7 +12,7 @@ For the C program
 ```
 $ pacman -S yajl
 $ wget https://raw.githubusercontent.com/644/avg-audit/master/avg-audit.c
-$ gcc -oavg-audit avg-audit.c -O3 -Wall -lyajl
+$ gcc -oavg-audit avg-audit.c -O3 -Wall -lyajl -lcurl
 ```
 
 # Usage
@@ -43,7 +43,7 @@ Fields:
 
 For the C program
 ```
-$ curl -L -s 'https://security.archlinux.org/issues/vulnerable/json' | /path/to/avg-audit | column -s, -t
+$ ./avg-audit | column -s, -t
 ```
 
 # Dependencies
