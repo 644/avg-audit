@@ -3,21 +3,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <dirent.h>
+#include <alpm_octopi_utils.h>
 #include <yajl/yajl_tree.h>
 #include <curl/curl.h>
 
-static int32_t comp(const void *a, const void *b)
-{
-	return strcmp(*(const char**)a, *(const char**)b);
-}
-
-static void sort(char *arr[], uint_fast16_t n)
-{
-	qsort(arr, n, sizeof(const char*), comp);
-}
-
-static bool binsearch(char *str[], int_fast16_t max, char *value)
+static bool binsearch(const char *str[], int_fast16_t max, char *value)
 {
 	int_fast16_t begin = 0;
 	int_fast16_t end = max - 1;
@@ -47,10 +37,8 @@ static int_fast16_t curlcb(void *contents, int_fast16_t size, int_fast16_t nmemb
 	struct memstruct *mem = (struct memstruct *)userp;
 
 	char *ptr = realloc(mem->memory, mem->size + realsize + 1);
-	if(ptr == NULL){
-		printf("not enough memory (realloc returned NULL)\n");
+	if(ptr == NULL)
 		return 0;
-	}
 
 	mem->memory = ptr;
 	memcpy(&(mem->memory[mem->size]), contents, realsize);
@@ -111,50 +99,31 @@ int main(void)
 	char *name = NULL;
 	char *sever = NULL;
 	char *package = NULL;
-	char *installed[10000];
-	char filen[512];
-	char line[64];
+	const char *installed[10000];
 	uint_fast16_t xlen = 0;
-	FILE *file = NULL;
-	DIR *dir = opendir("/var/lib/pacman/local/");
-	struct dirent *ep;
+	AlpmUtils *alpm_utils = alpm_utils_new("/etc/pacman.conf");
+	alpm_list_t *pkglist = alpm_utils_get_installed_pkgs(alpm_utils);
+	alpm_list_t *p;
 
-	if(dir == NULL){
-		yajl_tree_free(node);
-		return 1;
-	}
+	for(p=pkglist; p; p=alpm_list_next(p))
+		installed[xlen++] = alpm_pkg_get_name(p->data);
 
-	while((ep = readdir(dir))){
-		snprintf(filen, sizeof(filen), "/var/lib/pacman/local/%s/desc", ep->d_name);
-		file = fopen(filen, "r");
-
-		if(file == NULL)
-			continue;
-
-		uint_fast16_t count = 0;
-		while(fgets(line, sizeof(line), file) != NULL){
-			if(count++ == 1){
-				line[strlen(line)-1] = 0;
-				installed[xlen++] = strdup(line);
-				break;
-			}
-		}
-		fclose(file);
-	}
-
-	closedir(dir);
-	sort(installed, xlen);
 	printf("PACKAGES,AFFECTED,STATUS,SEVERITY,NAME\n");
 
 	for(uint_fast16_t i=0; i < data->u.array.len; i++){
 		yajl_val obj = data->u.array.values[i];
 		yajl_val d_pkgs = yajl_tree_get(obj, r_pkgs, yajl_t_array);
 
-		bool isinstalled = false;
-
 		if(!d_pkgs || !YAJL_IS_ARRAY(d_pkgs))
 			continue;
 
+		yajl_val statusobj = yajl_tree_get(obj, r_status, yajl_t_string);
+		if(statusobj)
+			status = YAJL_GET_STRING(statusobj);
+		if(strcmp(status, "Vulnerable") != 0)
+			continue;
+
+		bool isinstalled = false;
 		for(uint_fast16_t j=0; j < d_pkgs->u.array.len; j++){
 			yajl_val pkgobj = d_pkgs->u.array.values[j];
 			if(pkgobj)
@@ -164,13 +133,6 @@ int main(void)
 		}
 
 		if(!isinstalled)
-			continue;
-
-		yajl_val statusobj = yajl_tree_get(obj, r_status, yajl_t_string);
-
-		if(statusobj)
-			status = YAJL_GET_STRING(statusobj);
-		if(strcmp(status, "Vulnerable") != 0)
 			continue;
 
 		yajl_val versobj = yajl_tree_get(obj, r_version, yajl_t_string);
@@ -188,5 +150,8 @@ int main(void)
 	}
 
 	yajl_tree_free(node);
+	alpm_utils_free(alpm_utils);
+	alpm_list_free(pkglist);
+	alpm_list_free(p);
 	return 0;
 }
