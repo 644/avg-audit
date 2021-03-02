@@ -10,9 +10,9 @@ For the bash script
 
 For the C program
 ```
-$ pacman -S yajl
+$ yay -S yajl aur/alpm_octopi_utils
 $ wget https://raw.githubusercontent.com/644/avg-audit/master/avg-audit.c
-$ gcc -oavg-audit avg-audit.c -O3 -Wall -lyajl -lcurl
+$ gcc -o avg-audit avg-audit.c $(pkg-config --cflags --libs glib-2.0 libalpm libalpm_octopi_utils) -lyajl -lcurl -Wpedantic -O3
 ```
 
 # Usage
@@ -47,7 +47,7 @@ $ ./avg-audit | column -s, -t
 ```
 
 # Dependencies
-jq, curl, pacman, yajl
+jq, curl, pacman, yay, yajl, alpm_octopi_utils
 
 # Example
 ![example.png](example.png)
