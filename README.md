@@ -4,24 +4,29 @@ avg-audit will check currently installed packages on Arch Linux based systems ag
 The C version is a work in progress.
 
 # Installation
-For the bash script
-
+First get the makefile
 ```bash
-git clone https://github.com/644/avg-audit/; cd avg-audit; make shell; sudo make install
+mkdir -p avg-audit; cd $_; wget https://raw.githubusercontent.com/644/avg-audit/master/Makefile
 ```
 
-For the C program
+To install the bash script
+
 ```bash
-git clone https://github.com/644/avg-audit/; cd avg-audit; make; sudo make install
+make shell && sudo make install
+```
+
+To install the C program
+```bash
+make && sudo make install
 ```
 
 # Updating/Uninstalling
-To uninstall, run this in the cloned avg-audit directory
+To uninstall, run this in the avg-audit directory
 ```bash
 sudo make clean
 ```
 
-To check for updates, just run this from the cloned avg-audit directory
+To check for updates, run this in the avg-audit directory
 
 For the bash script
 ```bash
