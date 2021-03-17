@@ -7,13 +7,18 @@
 #include <yajl/yajl_tree.h>
 #include <curl/curl.h>
 
-static bool binsearch(const char *str[], int_fast16_t max, char *value)
+#define RED "\x1b[31m"
+#define GRN "\x1b[32m"
+#define YEL "\x1b[33m"
+#define ESC "\x1b[0m"
+
+static bool binsearch(const char *str[], const int_fast16_t max, const char *value)
 {
 	int_fast16_t begin = 0;
 	int_fast16_t end = max - 1;
+	int_fast16_t cond = 0;
 
 	while(begin <= end){
-		int_fast16_t cond = 0;
 		int_fast16_t position = (begin + end) / 2;
 		if((cond = strcmp(str[position], value)) == 0)
 			return true;
@@ -31,7 +36,7 @@ struct memstruct {
 	int_fast16_t size;
 };
 
-static int_fast16_t curlcb(void *contents, int_fast16_t size, int_fast16_t nmemb, void *userp)
+static int_fast16_t curlcb(const void *contents, const int_fast16_t size, const int_fast16_t nmemb, const void *userp)
 {
 	int_fast16_t realsize = size * nmemb;
 	struct memstruct *mem = (struct memstruct *)userp;
@@ -48,8 +53,19 @@ static int_fast16_t curlcb(void *contents, int_fast16_t size, int_fast16_t nmemb
 	return realsize;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+	bool link = false;
+	bool color = false;
+	int_fast16_t opt;
+	for(opt=1; opt < argc && argv[opt][0] == '-'; opt++){
+		switch(argv[opt][1]){
+			case 'l': link = true; break;
+			case 'c': color = true; break;
+			default: fprintf(stderr, "Usage: %s [-lc]\n", argv[0]); return 0;
+		}
+	}
+	
 	CURL *curl_handle;
 	CURLcode res;
 	struct memstruct chunk;
@@ -94,6 +110,8 @@ int main(void)
 		return 0;
 	}
 
+	char *COLSEVER = ESC;
+	char *COLSTAT = GRN;
 	char *status = NULL;
 	char *version = NULL;
 	char *name = NULL;
@@ -101,6 +119,7 @@ int main(void)
 	char *package = NULL;
 	const char *installed[10000];
 	uint_fast16_t xlen = 0;
+	uint_fast16_t vulncount = 0;
 	AlpmUtils *alpm_utils = alpm_utils_new("/etc/pacman.conf");
 	alpm_list_t *pkglist = alpm_utils_get_installed_pkgs(alpm_utils);
 	alpm_list_t *p;
@@ -108,7 +127,7 @@ int main(void)
 	for(p=pkglist; p; p=alpm_list_next(p))
 		installed[xlen++] = alpm_pkg_get_name(p->data);
 
-	printf("PACKAGES,AFFECTED,STATUS,SEVERITY,NAME\n");
+	printf("%-20s%-20s%-12s%-12s%-12s\n", "PACKAGES","AFFECTED","STATUS","SEVERITY","NAME");
 
 	for(uint_fast16_t i=0; i < data->u.array.len; i++){
 		yajl_val obj = data->u.array.values[i];
@@ -124,7 +143,7 @@ int main(void)
 			continue;
 
 		bool isinstalled = false;
-		for(uint_fast16_t j=0; j < d_pkgs->u.array.len; j++){
+		for(uint_fast8_t j=0; j < d_pkgs->u.array.len; j++){
 			yajl_val pkgobj = d_pkgs->u.array.values[j];
 			if(pkgobj)
 				package = YAJL_GET_STRING(pkgobj);
@@ -146,8 +165,31 @@ int main(void)
 		if(severobj)
 			sever = YAJL_GET_STRING(severobj);
 
-		printf("%s,%s,%s,%s,%s\n", package, version, status, sever, name);
+		vulncount++;
+
+		if(color){
+			if(strcmp(sever, "High") == 0)
+				COLSEVER=RED;
+			else if(strcmp(sever, "Medium") == 0)
+				COLSEVER=YEL;
+			else if(strcmp(sever, "Low") == 0)
+				COLSEVER=GRN;
+
+			if(strcmp(status, "Vulnerable") == 0)
+				COLSTAT=RED;
+
+			printf("%-20s%-20s%s%-12s" ESC "%s%-12s" ESC, package, version, COLSTAT, status, COLSEVER, sever);
+		}else{
+			printf("%-20s%-20s%-12s%-12s", package, version, status, sever);
+		}
+
+		if(link)
+			printf("https://security.archlinux.org/");
+
+		printf("%-12s\n", name);
 	}
+
+	printf("\n%d vulnerable packages installed\n", vulncount);
 
 	yajl_tree_free(node);
 	alpm_utils_free(alpm_utils);
