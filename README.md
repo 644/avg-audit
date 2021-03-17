@@ -6,13 +6,30 @@ The C version is a work in progress.
 # Installation
 For the bash script
 
-`$ wget https://raw.githubusercontent.com/i34/avg-audit/master/avg-audit && chmod +x avg-audit`
+```bash
+git clone https://github.com/644/avg-audit/; cd avg-audit; make shell; sudo make install
+```
 
 For the C program
+```bash
+git clone https://github.com/644/avg-audit/; cd avg-audit; make; sudo make install
 ```
-$ yay -S yajl aur/alpm_octopi_utils
-$ wget https://raw.githubusercontent.com/644/avg-audit/master/avg-audit.c
-$ gcc -o avg-audit avg-audit.c $(pkg-config --cflags --libs glib-2.0 libalpm libalpm_octopi_utils) -lyajl -lcurl -Wpedantic -O3
+
+# Updating/Uninstalling
+To uninstall, run this in the cloned avg-audit directory
+```bash
+sudo make clean
+```
+
+To check for updates, just run this from the cloned avg-audit directory
+
+For the bash script
+```bash
+make shell && sudo make install
+```
+For the C program
+```bash
+make && sudo make install
 ```
 
 # Usage
@@ -43,7 +60,7 @@ Fields:
 
 For the C program
 ```
-$ ./avg-audit | column -s, -t
+avg-audit -l -c
 ```
 
 # Dependencies
