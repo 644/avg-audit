@@ -65,7 +65,7 @@ Fields:
 
 For the C program
 ```
-avg-audit -l -c
+avg-audit -a -l -c -n -t
 ```
 
 # Dependencies
