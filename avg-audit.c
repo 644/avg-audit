@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	bool color = false;
 	bool printall = false;
 	bool printcount = true;
-	char *testurl = "https://security.archlinux.org/issues/vulnerable/json";
+	char *testurl = "https://security.archlinux.org/issues/vulnerable.json";
 	
 	for(int_fast16_t opt=1; opt < argc && argv[opt][0] == '-'; opt++){
 		switch(argv[opt][1]){
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 			case 'c': color = true; break;
 			case 'a': printall = true; break;
 			case 'n': printcount = false; break;
-			case 't': testurl = "https://security.archlinux.org/all.json"; break;
+			case 't': testurl = "https://security.archlinux.org/issues/all.json"; break;
 			default: fprintf(stderr, "Usage: %s [-alcnt]\n", argv[0]); return 0;
 		}
 	}
