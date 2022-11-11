@@ -6,7 +6,7 @@ declare -- fullurl=false
 declare -- vsys=true
 declare -- vformat=packages,affected,fixed,status,severity,name
 declare -- dbpath='/var/lib/pacman'
-declare -- securl='https://security.archlinux.org/issues/vulnerable/json'
+declare -- securl='https://security.archlinux.org/issues/vulnerable.json'
 declare -r -- red='\x1b[91m\x1b[1m'
 declare -r -- yel='\x1b[93m\x1b[1m'
 declare -r -- grn='\x1b[92m\x1b[1m'
@@ -62,7 +62,7 @@ while getopts 'haf:vctlnb:' opt; do
 		f) vformat=${OPTARG} ;;
 		v) vsys=false ;;
 		c) coloroutput=true ;;
-		t) securl='https://security.archlinux.org/all.json' ;;
+		t) securl='https://security.archlinux.org/issues/all.json' ;;
 		l) fullurl=true ;;
 		n) vcount=false ;;
 		b) dbpath=${OPTARG}; [[ -d "${dbpath}" ]] || { printf '%s not a directory\n' "${dbpath}" >&2; exit 1; } ;;
@@ -88,14 +88,12 @@ jqcommand=${jqcommand:9}
 vheaders=${vformat^^}
 
 while read -r package; do
-	packagelist[${package%% *}]=${package##* }
+	packagelist["${package%% *}"]="${package##* }"
 done < <(pacman -Q)
 
 if ${vsys}; then
-	while read -r vpackage vaffected; do
-		[[ ${packagelist[${vpackage}]} == "${vaffected}" ]] &&
-			vrows+=("$(jq -r ".[] | select((.affected == \"${vaffected}\") and any(.packages[]; . == \"${vpackage}\")) | ${jqcommand}" <<< "${jdata}")")
-	done < <(jq -r '.[] | .packages[] + " " + .affected' <<< "${jdata}")
+	# Don't do this
+	mapfile -t vrows < <(while read -r vpackage vaffected; do [[ -n ${packagelist[${vpackage}]} ]] && jq -r ".[] | select((.affected == \"${vaffected}\") and (.fixed == null) and any(.packages[]; . == \"${vpackage}\")) | ${jqcommand}" <<< "${jdata}"; done < <(jq -r '.[] | .packages[] + " " + .affected' <<< "${jdata}") | sort -u)
 else
 	mapfile -t vrows < <(jq -r ".[] | ${jqcommand}" <<< "${jdata}")
 fi
